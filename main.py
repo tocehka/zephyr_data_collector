@@ -5,7 +5,7 @@ from time import time, strftime, gmtime
 from functools import partial
 import sys
 import os
-
+import numpy as np
 
 HEART_UUID = "00002a37-0000-1000-8000-00805f9b34fb"
 
@@ -20,8 +20,6 @@ class WriterManager:
             self.__writer = csv.DictWriter(self.__file, fieldnames=header)
             self.__writer.writeheader()    
     def write_row(self, row):
-        print("wrote")
-        print(self.__file)
         self.__writer.writerow(row)
     def flush(self):
         self.__file.flush()
@@ -29,15 +27,13 @@ class WriterManager:
         self.__file.close()
         
 writer_class = WriterManager("stress_data_add.csv")
-start_time = time()
+start_time = 0
+first_time = True
 
 def handle_data(handle, value, writer=None):
     try:
-        print(value)
-        print(hexlify(value))
         if value == None:
             raise ValueError
-        print("Recieved")
         flags = value.pop(0)
         hr_format = (flags >> 0) & 1
         contact_status = (flags >> 1) & 3
@@ -62,8 +58,14 @@ def handle_data(handle, value, writer=None):
             rr.append(rr_val)
             meas['rr'] = rr
         meas_data = {}
+        global first_time
+        global start_time
+        if first_time:
+            start_time = time()
+            first_time = False
+        print(f"Recieved at {time() - start_time}")
         if "rr" in meas:
-            meas_data = {"hr": meas["hr"], "rr": meas["rr"], "stress": 0,\
+            meas_data = {"hr": meas["hr"], "rr": np.mean(meas["rr"]), "stress": 0,\
                             "time": strftime("%H:%M:%S", gmtime(time() - start_time)),\
                             "real_time": strftime("%H:%M:%S")}
         else:
